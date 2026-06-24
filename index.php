@@ -7,28 +7,34 @@ include 'includes/userTable.php';
 include 'includes/transactionTable.php';
 
 //Controleer of post is geset
+if (!isset($_SESSION['login_attempts'])) {
+    $_SESSION['login_attempts'] = 0;
+}
+
+if ($_SESSION['login_attempts'] >= 5) {
+    die("Te veel pogingen. Probeer later opnieuw.");
+}
+
 if($_SERVER["REQUEST_METHOD"] == "POST") {
     // Gebruikersnaam en wachtwoord uit post halen
     $username = $_POST['username'];
     $password = $_POST['password'];
 
     // kwetsbaar voor SQL injectie
-    $sql = "SELECT * FROM user WHERE username = ? AND password = ?";
+    $sql = "SELECT * FROM user WHERE username = ?";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$username, $password]);
+    $result->execute([$username]);
     $result = $stmt;
     $user = $result->fetch();
 
-    // Controleer of er een rij is gevonden
-    if($result->rowCount() > 0) {
-        // Gebruiker is ingelogd
+    if ($user && password_verify($password, $user['password'])) {
         $_SESSION['loggedin'] = true;
         $_SESSION['username'] = $username;
         $_SESSION['user'] = $user;
 
         header("location: dashboard.php");
     } else {
-        // Gebruiker is niet ingelogd
+        $_SESSION['login_attempts']++;
         $error = "Gebruikersnaam of wachtwoord is onjuist";
     }
 
@@ -53,8 +59,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
             <img src="img/Omanido1.png" alt="Omanido Logo" class="mb-6 w-1/2"> <!-- Aanpassen van de breedte naar 1/2 van de container -->
         </div>
         <h2 class="text-lg text-center font-bold mb-6">Inloggen bij Omanido</h2>
-        <form action="<? echo htmlspecialchars($_SERVER["PHP_SELF"]);  ?>" method="post">
-            <div class="mb-4">
+             <form action="<?= htmlspecialchars($_SERVER["PHP_SELF"], ENT_QUOTES, 'UTF-8') ?>" method="post">   
+                <div class="mb-4">
                 <label for="username" class="block text-sm font-medium text-gray-700">Gebruikersnaam:</label>
                 <input type="text" id="username" name="username" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
             </div>
@@ -71,7 +77,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
         <label class="block text-sm font-medium text-gray-700">Uitgevoerde SQL-query:</label>
         <textarea readonly class="mt-1 block w-full border rounded-md py-2 px-3 resize-none" rows="4"><? //als $sql bestaat geef $sql, anders geef aan dat deze nog niet is ingevuld
         if(isset($sql)) {
-            echo $sql;
+        echo htmlspecialchars($sql, ENT_QUOTES, 'UTF-8');
         } else {
             echo "Log in om je SQL query te zien";
         }
